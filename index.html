@@ -46,6 +46,9 @@ h1 small{font-family:var(--f-mono);font-weight:400;font-size:12px;letter-spacing
 [hidden]{display:none!important}
 .caption{position:absolute;left:12px;right:12px;bottom:12px;padding:10px 14px;background:rgba(12,16,19,.78);color:#f3f6f8;border-left:4px solid var(--c,#93a2aa);border-radius:3px;font-family:var(--f-display);font-weight:800;font-size:clamp(16px,2.6vw,22px);line-height:1.4;letter-spacing:.02em}
 .caption small{display:block;font-family:var(--f-mono);font-weight:400;font-size:11px;color:#b7c3c9;letter-spacing:.06em;margin-bottom:2px}
+.sens{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.sens input{width:140px;accent-color:var(--ink)}
+.sens output{font-family:var(--f-mono);color:var(--ink);min-width:2ch}
 .ch-comment{font-family:var(--f-display);font-weight:800;font-size:18px;min-height:1.5em}
 .ctrls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 button{font:500 14px var(--f-body);border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 14px;border-radius:4px;cursor:pointer}
@@ -111,6 +114,7 @@ td code{font-family:var(--f-mono);font-size:12px}
       <div class="ctrls">
         <button id="calibBtn" disabled>真顔で基準を測る（3秒）</button>
         <button id="meshBtn" disabled>ランドマーク表示：オン</button>
+        <label class="sens" for="sens">感度 <span>きびしい</span><input type="range" id="sens" min="1" max="10" step="1" value="7"><span>ゆるい</span><output id="sensOut">7</output></label>
       </div>
       <div class="calib warn" id="calibText">未キャリブレーション：個人差を補正できていないため精度が下がります</div>
     </section>
@@ -136,13 +140,13 @@ td code{font-family:var(--f-mono);font-size:12px}
     <div class="tbl"><table>
       <thead><tr><th></th><th>参照する感情</th><th>必須AU（幾何平均）</th><th>補正</th><th>根拠</th></tr></thead>
       <tbody>
-        <tr style="--c:var(--joy)"><td class="k">喜</td><td>喜び（joy）</td><td><code>AU6 頬を上げる × AU12 口角を上げる</code></td><td><code>× (1 − 0.5·AU26)</code> 大口の笑いは「楽」側へ</td><td>FACS Investigator's Guideの幸福規則 6+12／Campos et al. 2013</td></tr>
+        <tr style="--c:var(--joy)"><td class="k">喜</td><td>喜び（joy）</td><td><code>AU6 頬を上げる × AU12 口角を上げる</code></td><td><code>× (1 − 0.5·max(0, AU26 − 0.3)/0.7)</code> 大口の笑いは「楽」側へ</td><td>FACS Investigator's Guideの幸福規則 6+12／Campos et al. 2013</td></tr>
         <tr style="--c:var(--anger)"><td class="k">怒</td><td>怒り（anger）</td><td><code>AU4 眉を寄せ下げる × (AU5 または AU7)</code></td><td><code>× (0.7 + 0.3·AU23/24)</code>、<code>× (1 − AU12)</code></td><td>同ガイドの怒り規則 4+5/7、4+5+7+23</td></tr>
         <tr style="--c:var(--sad)"><td class="k">哀</td><td>悲しみ（sadness）</td><td><code>AU1 眉の内側を上げる × AU4</code></td><td><code>× (0.6 + 0.4·AU15)</code>、<code>× (1 − AU12)</code></td><td>同ガイドの悲しみ規則 1+4、1+4+15</td></tr>
         <tr style="--c:var(--fun)"><td class="k">楽</td><td>愉快・面白さ（amusement）</td><td><code>AU6 × AU12 × AU25/26 口を開く</code></td><td>なし</td><td>Campos et al. 2013（amusementは6+12に口の開きと顎の下降）</td></tr>
       </tbody>
     </table></div>
-    <p class="fine">各AUの強さ ＝ (現在値 − 真顔の基準値) ÷ (参照最大値 − 基準値) を0〜1に収めた値です。参照最大値はMediaPipeの出力が実際に届きやすい上限に合わせた経験的な設定で、論文由来の値ではありません。</p>
+    <p class="fine">各AUの強さ ＝ (現在値 − 真顔の基準値) ÷ (参照最大値 − 基準値) を0〜1に収めた値です。参照最大値はMediaPipeの出力が実際に届きやすい上限に合わせた経験的な設定で、論文由来の値ではありません。感度スライダーはこの参照最大値を一律に縮めたり伸ばしたりします（ゆるいほど小さな動きで満点に近づきます）。さらに小さな動きを拾いやすくするため、強さを0.75乗しています。</p>
     <p class="fine">注意：表情は内面の感情をそのまま表すとは限りません（Barrett et al. 2019）。この点数は「典型的な感情表出の形にどれだけ近いか」を測るもので、本人の感情を判定するものではありません。「口元だけの笑顔」の判定は、頬の動き（AU6）の有無で本物の笑顔を見分けるデュシェンヌ・スマイルの考え方によりますが、この区別が本心を示すかには反論もあります（Girard et al. 2021）。</p>
     <p class="fine">参考：<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7264164/" target="_blank" rel="noopener">Clark et al. 2020, Front. Psychol.（FACS Investigator's GuideのAU→感情規則表）</a> ／ <a href="https://psu.pb.unizin.org/psych425/chapter/facial-expressions-and-bodily-changes/" target="_blank" rel="noopener">Campos et al. 2013 の要約（ポジティブ感情8種の表出）</a></p>
   </section>
@@ -156,15 +160,15 @@ const MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/f
 
 // ---- FACS アクションユニット定義（ブレンドシェイプ → AU） ----
 const AUS = {
-  AU1:  { label:"AU1",  bs:["browInnerUp"],                        ref:0.60 },
-  AU4:  { label:"AU4",  bs:["browDownLeft","browDownRight"],       ref:0.60 },
-  AU5:  { label:"AU5",  bs:["eyeWideLeft","eyeWideRight"],         ref:0.40 },
-  AU6:  { label:"AU6",  bs:["cheekSquintLeft","cheekSquintRight"], ref:0.50 },
-  AU7:  { label:"AU7",  bs:["eyeSquintLeft","eyeSquintRight"],     ref:0.60 },
-  AU12: { label:"AU12", bs:["mouthSmileLeft","mouthSmileRight"],   ref:0.80 },
-  AU15: { label:"AU15", bs:["mouthFrownLeft","mouthFrownRight"],   ref:0.40 },
-  AU23: { label:"AU23/24", bs:["mouthPressLeft","mouthPressRight"],ref:0.50 },
-  AU26: { label:"AU25/26", bs:["jawOpen"],                         ref:0.50 },
+  AU1:  { label:"AU1",  bs:["browInnerUp"],                        ref:0.40 },
+  AU4:  { label:"AU4",  bs:["browDownLeft","browDownRight"],       ref:0.40 },
+  AU5:  { label:"AU5",  bs:["eyeWideLeft","eyeWideRight"],         ref:0.25 },
+  AU6:  { label:"AU6",  bs:["cheekSquintLeft","cheekSquintRight"], ref:0.25 },
+  AU7:  { label:"AU7",  bs:["eyeSquintLeft","eyeSquintRight"],     ref:0.40 },
+  AU12: { label:"AU12", bs:["mouthSmileLeft","mouthSmileRight"],   ref:0.55 },
+  AU15: { label:"AU15", bs:["mouthFrownLeft","mouthFrownRight"],   ref:0.20 },
+  AU23: { label:"AU23/24", bs:["mouthPressLeft","mouthPressRight"],ref:0.30 },
+  AU26: { label:"AU25/26", bs:["jawOpen"],                         ref:0.35 },
 };
 
 const gmean = arr => Math.pow(arr.reduce((p,v)=>p*Math.max(v,0),1), 1/arr.length);
@@ -172,7 +176,7 @@ const gmean = arr => Math.pow(arr.reduce((p,v)=>p*Math.max(v,0),1), 1/arr.length
 // 感情スコア（0〜1）。a は AU強度（0〜1）
 const EMOTIONS = [
   { key:"joy",   kanji:"喜", name:"喜び",   color:"--joy",   uses:["AU6","AU12","AU26"],
-    f:a => gmean([a.AU6,a.AU12]) * (1 - 0.5*a.AU26) },
+    f:a => gmean([a.AU6,a.AU12]) * (1 - 0.5*Math.max(0, a.AU26 - 0.3)/0.7) },
   { key:"anger", kanji:"怒", name:"怒り",   color:"--anger", uses:["AU4","AU5","AU7","AU23","AU12"],
     f:a => gmean([a.AU4, Math.max(a.AU5,a.AU7)]) * (0.7 + 0.3*a.AU23) * (1 - a.AU12) },
   { key:"sad",   kanji:"哀", name:"悲しみ", color:"--sad",   uses:["AU1","AU4","AU15","AU12"],
@@ -184,12 +188,15 @@ const EMOTIONS = [
 const clamp01 = v => Math.min(1, Math.max(0, v));
 let baseline = null; // 真顔の基準（ブレンドシェイプ名 → 値）
 
+// 感度：1（きびしい）〜10（ゆるい）。参照最大値に掛ける倍率に変換
+const refScale = () => 1.25 - 0.08 * Number(document.getElementById("sens").value);
 function toAUs(bsMap){
   const out = {};
   for (const [k,d] of Object.entries(AUS)){
     const raw = d.bs.reduce((s,n)=>s+(bsMap[n]??0),0)/d.bs.length;
-    const base = baseline ? d.bs.reduce((s,n)=>s+(baseline[n]??0),0)/d.bs.length : d.ref*0.1;
-    out[k] = clamp01((raw - base) / Math.max(d.ref - base, 0.05));
+    const ref = d.ref * refScale();
+    const base = baseline ? d.bs.reduce((s,n)=>s+(baseline[n]??0),0)/d.bs.length : d.ref*0.05;
+    out[k] = Math.pow(clamp01((raw - base) / Math.max(ref - base, 0.03)), 0.75);
   }
   return out;
 }
@@ -297,6 +304,7 @@ $("startBtn").addEventListener("click", async ()=>{
   }
 });
 
+$("sens").addEventListener("input",e=>{ $("sensOut").textContent=e.target.value; for(const k in peak) peak[k]=0; });
 $("meshBtn").addEventListener("click",()=>{
   showMesh=!showMesh; $("meshBtn").textContent=`ランドマーク表示：${showMesh?"オン":"オフ"}`;
   if(!showMesh) ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -359,7 +367,7 @@ function updateCaption(){
   let top = EMOTIONS[0];
   for (const e of EMOTIONS) if (smooth[e.key] > smooth[top.key]) top = e;
   const s = smooth[top.key];
-  const id = s < 12 ? "neutral" : top.key + tierOf(s);
+  const id = s < 6 ? "neutral" : top.key + tierOf(s);
   const changed = id !== cap.id;
   if ((changed && now - cap.at < 1200) || (!changed && now - cap.at < 4000)) return;
   cap = { id, at:now };
