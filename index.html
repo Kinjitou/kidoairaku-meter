@@ -43,6 +43,10 @@ h1 small{font-family:var(--f-mono);font-weight:400;font-size:12px;letter-spacing
 .stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
 .overlay-msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#e6ecef;text-align:center;padding:20px;background:rgba(12,16,19,.72)}
 .overlay-msg p{margin:0;max-width:34ch;font-size:14px}
+[hidden]{display:none!important}
+.caption{position:absolute;left:12px;right:12px;bottom:12px;padding:10px 14px;background:rgba(12,16,19,.78);color:#f3f6f8;border-left:4px solid var(--c,#93a2aa);border-radius:3px;font-family:var(--f-display);font-weight:800;font-size:clamp(16px,2.6vw,22px);line-height:1.4;letter-spacing:.02em}
+.caption small{display:block;font-family:var(--f-mono);font-weight:400;font-size:11px;color:#b7c3c9;letter-spacing:.06em;margin-bottom:2px}
+.ch-comment{font-family:var(--f-display);font-weight:800;font-size:18px;min-height:1.5em}
 .ctrls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 button{font:500 14px var(--f-body);border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 14px;border-radius:4px;cursor:pointer}
 button:hover:not(:disabled){border-color:var(--ink)}
@@ -98,6 +102,7 @@ td code{font-family:var(--f-mono);font-size:12px}
       <div class="stage">
         <video id="video" playsinline muted></video>
         <canvas id="canvas"></canvas>
+        <div class="caption" id="caption" aria-live="polite" hidden><small id="captionTag"></small><span id="captionText"></span></div>
         <div class="overlay-msg" id="overlay">
           <p>映像は端末内だけで処理します。サーバーへの送信はありません。</p>
           <button class="primary" id="startBtn">カメラを起動</button>
@@ -121,6 +126,7 @@ td code{font-family:var(--f-mono);font-size:12px}
     <p class="fine" style="margin:0">感情を選ぶと3秒のカウントダウン後、3秒間計測します。0.5秒移動平均の最大値が得点です（一瞬のノイズで満点にならないようにするため）。</p>
     <div class="ch-btns" id="chBtns"></div>
     <div class="ch-state" id="chState">カメラ起動後に選べます</div>
+    <div class="ch-comment" id="chComment"></div>
     <div class="results" id="results"></div>
   </section>
 
@@ -187,6 +193,47 @@ function toAUs(bsMap){
   }
   return out;
 }
+
+// ---- コメント（4感情 × 5段階 × 5通り = 100通り、＋真顔用） ----
+const COMMENTS = {
+  joy: [
+    ["その顔、まだ笑う前の準備運動？","口角、もう少しだけ持ち上げてみよう","笑顔の気配だけ感じる…","ほっぺたが出番を待ってるよ","笑顔のエンジン、まだかかってない"],
+    ["お、ちょっと笑った？","口元がほころんできたね","その調子、ほっぺも一緒に上げよう","控えめスマイル、嫌いじゃない","あと一押しで本物の笑顔"],
+    ["いい感じの笑顔になってきた","目元も笑い始めてる","見てるこっちも和むね","その笑顔、写真に残したい","好感度がじわじわ上昇中"],
+    ["いい笑顔だよ！","目まで笑ってる、本物のスマイル","その笑顔で一日が明るくなる","営業スマイルを超えてきた","ほっぺが完全に仕事してる"],
+    ["100万ドルの笑顔！","満開！これぞデュシェンヌ・スマイル","眩しすぎて画面が明るくなった","笑顔の教科書に載せたいレベル","幸せが顔からあふれてる！"],
+  ],
+  anger: [
+    ["それで怒ってるつもり？","もっと怒って見せろ！","眉間がまだお休み中","穏やかすぎる。仏か？","怒りゲージ、まだ空っぽ"],
+    ["ちょっとムッとしてきた？","眉間にしわ、もっと寄せて！","小さな不満くらいは伝わる","まだ『ちょっと待って』の顔","怒りの火種は見えた。燃やせ！"],
+    ["おっ、イラッとしてきたね","目つきが鋭くなってきた","会議室がざわつくレベル","その顔で見られたら謝っちゃう","あと少しで本気の怒り"],
+    ["迫力ある！近寄りがたい","本気で怒ってる顔だ","部下が全員背筋を伸ばした","その眼光、レーザーが出そう","唇まで力が入ってる、いいぞ"],
+    ["激怒！鬼の形相","怒りのオーラが画面を突き破った","雷が落ちたぞ！","誰か謝って！早く！","完璧な怒り顔。でも深呼吸もね"],
+  ],
+  sad: [
+    ["まだ全然平気そう","悲しい出来事を思い出してみて","眉の内側をそっと上げてみよう","元気そうで何より…でも今は悲しんで","哀しみ、まだ遠い"],
+    ["ちょっとしょんぼり？","眉が八の字になってきた","雨の日の月曜みたいな顔","物悲しさがにじんできた","口角もそっと下げてみて"],
+    ["切ない顔になってきたね","見ていて胸がきゅっとなる","失恋ソングが似合う表情","その顔、映画のワンシーンみたい","誰か温かいお茶を…"],
+    ["本気で悲しそう…大丈夫？","眉も口元も完全に哀しみモード","涙がこぼれそうな表情","全米が泣く準備をしている","抱きしめたくなる顔だ"],
+    ["悲劇のヒロイン級！","号泣寸前の名演技","哀しみの表情、満点","見ている側まで泣けてきた","アカデミー賞ノミネート確実"],
+  ],
+  fun: [
+    ["楽しいこと考えてる？","口を開けて笑ってみよう","お笑い番組でも思い出して","まだ真面目モードだね","ハハッ、と声に出してもいいよ"],
+    ["ちょっと楽しくなってきた？","クスッと笑いが漏れてる","笑いのツボが近づいてる","もっと口を開けてハハハ！","楽しさの芽が出てきた"],
+    ["いい笑い声が聞こえてきそう","楽しそうでなにより！","その笑顔、伝染するやつ","宴会が盛り上がってきた","テンション上がってきたね"],
+    ["大笑いだ！最高に楽しそう","腹筋に効いてる顔してる","その笑い、周りまで巻き込む","楽しさが止まらない","お祭り気分だね！"],
+    ["爆笑！もう誰にも止められない","笑い転げる寸前！","楽しさMAX、優勝！","笑いすぎてお腹痛くなるやつ","人生楽しんでる顔、満点！"],
+  ],
+};
+const NEUTRAL = ["無表情の達人…何を考えてる？","ポーカーフェイス、完璧","さあ、何か表情を作ってみて","真顔もかっこいいけど、動かしてみよう","静かな湖面のような顔"];
+const tierOf = s => Math.min(4, Math.floor(s/20));
+const lastPick = {};
+function pick(list, id){
+  let i = Math.floor(Math.random()*list.length);
+  if (list.length>1 && i===lastPick[id]) i = (i+1) % list.length;
+  lastPick[id] = i; return list[i];
+}
+function commentFor(key, score){ const t=tierOf(score); return pick(COMMENTS[key][t], key+t); }
 
 // ---- UI 構築 ----
 const $ = id => document.getElementById(id);
@@ -300,7 +347,33 @@ function update(bs){
   // デュシェンヌ判定：口角は上がっているが頬が上がっていない
   $("duchenne").textContent = (a.AU12 > 0.4 && a.AU6 < 0.15)
     ? "口元だけの笑顔（AU12のみ・AU6なし）です。頬まで持ち上げると「喜」が上がります。" : "";
+  updateCaption();
   challengeTick();
+}
+
+// ---- 実況コメント（最も高い感情と点数帯で選ぶ。ちらつかないよう間隔を置く） ----
+let cap = { id:null, at:0 };
+function updateCaption(){
+  if (ch) return; // チャレンジ中は別表示
+  const now = performance.now();
+  let top = EMOTIONS[0];
+  for (const e of EMOTIONS) if (smooth[e.key] > smooth[top.key]) top = e;
+  const s = smooth[top.key];
+  const id = s < 12 ? "neutral" : top.key + tierOf(s);
+  const changed = id !== cap.id;
+  if ((changed && now - cap.at < 1200) || (!changed && now - cap.at < 4000)) return;
+  cap = { id, at:now };
+  const el = $("caption");
+  el.hidden = false;
+  if (id === "neutral"){
+    el.style.setProperty("--c","#93a2aa");
+    $("captionTag").textContent = "真顔";
+    $("captionText").textContent = pick(NEUTRAL,"neutral");
+  } else {
+    el.style.setProperty("--c",`var(${top.color})`);
+    $("captionTag").textContent = `${top.kanji} ${Math.round(s)}点`;
+    $("captionText").textContent = commentFor(top.key, s);
+  }
 }
 
 // ---- 真顔キャリブレーション ----
@@ -334,6 +407,8 @@ let ch = null;
 function startChallenge(e){
   if (ch) return;
   ch = { e, phase:"count", t0:performance.now(), samples:[] };
+  $("chComment").textContent = "";
+  $("caption").hidden = true;
   chBtns.querySelectorAll("button").forEach(b=>b.disabled=true);
 }
 function challengeTick(){
@@ -352,6 +427,9 @@ function challengeTick(){
     best[ch.e.key] = Math.max(best[ch.e.key]??0, score);
     ui[ch.e.key].res.textContent = `${score}（自己ベスト ${best[ch.e.key]}）`;
     el.innerHTML = `<span class="ch-big">${score}</span> 点 ／ ${ch.e.kanji}・${ch.e.name}`;
+    $("chComment").style.color = `var(${ch.e.color})`;
+    $("chComment").textContent = commentFor(ch.e.key, score);
+    cap.at = 0;
     ch = null; chBtns.querySelectorAll("button").forEach(b=>b.disabled=false);
   }
 }
