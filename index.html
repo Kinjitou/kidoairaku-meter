@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: 計測器の操作パネル。左に映像、右に4チャンネルのメーター、下に採点式の根拠 */
+/* Layout: 計測器の操作パネル。左に映像とモード切替、右に4チャンネルのメーター、下にチャレンジと採点式の根拠 */
 :root{
   --bg:#eef1f3; --panel:#ffffff; --ink:#1b2328; --muted:#5d6a72; --line:#d3dade;
   --joy:#c98a00; --anger:#c8402c; --sad:#3b55a8; --fun:#14857a;
@@ -28,6 +28,7 @@
   color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0}
+[hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:20px 48px}
 .wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
 header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 20px}
@@ -43,21 +44,36 @@ h1 small{font-family:var(--f-mono);font-weight:400;font-size:12px;letter-spacing
 .stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
 .overlay-msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#e6ecef;text-align:center;padding:20px;background:rgba(12,16,19,.72)}
 .overlay-msg p{margin:0;max-width:34ch;font-size:14px}
-[hidden]{display:none!important}
+.countdown{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(12,16,19,.38);color:#f3f6f8;text-align:center;pointer-events:none}
+.countdown b{font-family:var(--f-mono);font-weight:500;font-size:clamp(72px,16vw,128px);line-height:1;font-variant-numeric:tabular-nums}
+.countdown span{font-family:var(--f-display);font-weight:800;font-size:clamp(16px,2.6vw,22px);letter-spacing:.04em}
 .caption{position:absolute;left:12px;right:12px;bottom:12px;padding:10px 14px;background:rgba(12,16,19,.78);color:#f3f6f8;border-left:4px solid var(--c,#93a2aa);border-radius:3px;font-family:var(--f-display);font-weight:800;font-size:clamp(16px,2.6vw,22px);line-height:1.4;letter-spacing:.02em}
 .caption small{display:block;font-family:var(--f-mono);font-weight:400;font-size:11px;color:#b7c3c9;letter-spacing:.06em;margin-bottom:2px}
+.ctrls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
+button,.filebtn{font:500 14px var(--f-body);border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 14px;border-radius:4px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+button:hover:not(:disabled),.filebtn:hover{border-color:var(--ink)}
+button:focus-visible,.filebtn:focus-within{outline:2px solid var(--sad);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{border:0;border-radius:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .sens{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);flex-wrap:wrap}
 .sens input{width:140px;accent-color:var(--ink)}
 .sens output{font-family:var(--f-mono);color:var(--ink);min-width:2ch}
-.ch-comment{font-family:var(--f-display);font-weight:800;font-size:18px;min-height:1.5em}
-.ctrls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-button{font:500 14px var(--f-body);border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 14px;border-radius:4px;cursor:pointer}
-button:hover:not(:disabled){border-color:var(--ink)}
-button:focus-visible{outline:2px solid var(--sad);outline-offset:2px}
-button:disabled{opacity:.45;cursor:not-allowed}
-button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .calib{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:10px}
 .calib.warn{color:var(--warn)}
+.maskpanel{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.maskpanel h3{margin:0;font-family:var(--f-display);font-size:17px;letter-spacing:.04em}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.preset{flex-direction:column;padding:8px 10px;min-width:92px;font-size:13px}
+.preset canvas{width:72px;height:72px}
+.preset img{width:72px;height:72px;object-fit:cover;border-radius:3px}
+.preset[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.maskmsg{font-size:13px;color:var(--muted);margin:0;min-height:1.4em}
+.maskmsg.warn{color:var(--warn)}
+.ch-comment{font-family:var(--f-display);font-weight:800;font-size:18px;min-height:1.5em}
 .meters{display:flex;flex-direction:column;gap:14px}
 .meter{display:grid;grid-template-columns:56px minmax(0,1fr) 64px;gap:4px 12px;align-items:center}
 .kanji{font-family:var(--f-display);font-weight:800;font-size:40px;line-height:1;color:var(--c);grid-row:span 2;text-align:center}
@@ -74,7 +90,7 @@ button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .challenge{display:flex;flex-direction:column;gap:10px}
 .challenge h2,.method h2{font-family:var(--f-display);font-size:20px;margin:0;letter-spacing:.04em}
 .ch-btns{display:flex;flex-wrap:wrap;gap:8px}
-.ch-btns button{min-width:64px;font-family:var(--f-display);font-weight:800;font-size:18px;color:var(--c)}
+.ch-btns button{min-width:64px;font-family:var(--f-display);font-weight:800;font-size:18px;color:var(--c);justify-content:center}
 .ch-state{font-family:var(--f-mono);font-size:13px;min-height:1.6em}
 .ch-big{font-family:var(--f-mono);font-size:44px;font-variant-numeric:tabular-nums;line-height:1}
 .results{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
@@ -104,19 +120,38 @@ td code{font-family:var(--f-mono);font-size:12px}
     <section class="panel">
       <div class="stage">
         <video id="video" playsinline muted></video>
+        <canvas id="glCanvas"></canvas>
         <canvas id="canvas"></canvas>
         <div class="caption" id="caption" aria-live="polite" hidden><small id="captionTag"></small><span id="captionText"></span></div>
+        <div class="countdown" id="countdown" hidden><b id="cdNum">3</b><span>真顔のまま、正面を見て</span></div>
         <div class="overlay-msg" id="overlay">
           <p>映像は端末内だけで処理します。サーバーへの送信はありません。</p>
           <button class="primary" id="startBtn">カメラを起動</button>
         </div>
       </div>
       <div class="ctrls">
-        <button id="calibBtn" disabled>真顔で基準を測る（3秒）</button>
-        <button id="meshBtn" disabled>ランドマーク表示：オン</button>
+        <div class="seg" role="group" aria-label="モード">
+          <button id="modeMeter" aria-pressed="true">メーター</button>
+          <button id="modeMask" aria-pressed="false">なりきり</button>
+        </div>
+        <button id="calibBtn" disabled>真顔の基準を測る</button>
+        <button id="meshBtn" disabled>ランドマーク：オン</button>
+      </div>
+      <div class="ctrls">
         <label class="sens" for="sens">感度 <span>きびしい</span><input type="range" id="sens" min="1" max="10" step="1" value="7"><span>ゆるい</span><output id="sensOut">7</output></label>
       </div>
       <div class="calib warn" id="calibText">未キャリブレーション：個人差を補正できていないため精度が下がります</div>
+
+      <div class="maskpanel" id="maskPanel" hidden>
+        <h3>なりきり</h3>
+        <div class="presets" id="presets"></div>
+        <div class="ctrls" style="margin-top:0">
+          <label class="filebtn">写真をアップロード<input class="sr-only" type="file" id="upload" accept="image/*"></label>
+          <button id="hideVideoBtn">カメラ映像：表示</button>
+        </div>
+        <p class="maskmsg" id="maskMsg">口パク・まばたき・眉の動きに連動します。写真は正面を向いた顔がおすすめです。</p>
+        <p class="fine" style="margin:0">アップロードした写真はこのページの中だけで使い、保存も送信もしません。ページを閉じると消えます。</p>
+      </div>
     </section>
 
     <section class="panel">
@@ -157,6 +192,7 @@ import { FaceLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
 
 const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
 const MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const DELAUNATOR = "https://cdn.jsdelivr.net/npm/delaunator@5.0.1/+esm";
 
 // ---- FACS アクションユニット定義（ブレンドシェイプ → AU） ----
 const AUS = {
@@ -175,17 +211,18 @@ const gmean = arr => Math.pow(arr.reduce((p,v)=>p*Math.max(v,0),1), 1/arr.length
 
 // 感情スコア（0〜1）。a は AU強度（0〜1）
 const EMOTIONS = [
-  { key:"joy",   kanji:"喜", name:"喜び",   color:"--joy",   uses:["AU6","AU12","AU26"],
+  { key:"joy",   kanji:"喜", name:"喜び",   color:"--joy",   hex:"#f2b52e", uses:["AU6","AU12","AU26"],
     f:a => gmean([a.AU6,a.AU12]) * (1 - 0.5*Math.max(0, a.AU26 - 0.3)/0.7) },
-  { key:"anger", kanji:"怒", name:"怒り",   color:"--anger", uses:["AU4","AU5","AU7","AU23","AU12"],
+  { key:"anger", kanji:"怒", name:"怒り",   color:"--anger", hex:"#ef5a43", uses:["AU4","AU5","AU7","AU23","AU12"],
     f:a => gmean([a.AU4, Math.max(a.AU5,a.AU7)]) * (0.7 + 0.3*a.AU23) * (1 - a.AU12) },
-  { key:"sad",   kanji:"哀", name:"悲しみ", color:"--sad",   uses:["AU1","AU4","AU15","AU12"],
+  { key:"sad",   kanji:"哀", name:"悲しみ", color:"--sad",   hex:"#6f8ff0", uses:["AU1","AU4","AU15","AU12"],
     f:a => gmean([a.AU1,a.AU4]) * (0.6 + 0.4*a.AU15) * (1 - a.AU12) },
-  { key:"fun",   kanji:"楽", name:"愉快",   color:"--fun",   uses:["AU6","AU12","AU26"],
+  { key:"fun",   kanji:"楽", name:"愉快",   color:"--fun",   hex:"#33c3b2", uses:["AU6","AU12","AU26"],
     f:a => gmean([a.AU6,a.AU12,a.AU26]) },
 ];
 
 const clamp01 = v => Math.min(1, Math.max(0, v));
+const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
 let baseline = null; // 真顔の基準（ブレンドシェイプ名 → 値）
 
 // 感度：1（きびしい）〜10（ゆるい）。参照最大値に掛ける倍率に変換
@@ -270,14 +307,14 @@ for (const e of EMOTIONS){
 function setStatus(text, state){ $("statusText").textContent=text; $("dot").className="dot"+(state?" "+state:""); }
 
 // ---- MediaPipe ----
-let landmarker, drawer, showMesh=true, lastVideoTime=-1, latestBS=null;
-const video=$("video"), canvas=$("canvas"), ctx=canvas.getContext("2d");
+let fileset, landmarker, imgLandmarker, drawer, showMesh=true, lastVideoTime=-1, latestBS=null, running=false;
+const video=$("video"), canvas=$("canvas"), ctx=canvas.getContext("2d"), glCanvas=$("glCanvas");
 
 $("startBtn").addEventListener("click", async ()=>{
   $("startBtn").disabled=true;
   try{
     setStatus("モデル読み込み中…");
-    const fileset = await FilesetResolver.forVisionTasks(WASM);
+    fileset = await FilesetResolver.forVisionTasks(WASM);
     const opts = { runningMode:"VIDEO", numFaces:1, outputFaceBlendshapes:true };
     try{
       landmarker = await FaceLandmarker.createFromOptions(fileset,{ baseOptions:{ modelAssetPath:MODEL, delegate:"GPU" }, ...opts });
@@ -287,13 +324,15 @@ $("startBtn").addEventListener("click", async ()=>{
     setStatus("カメラ接続中…");
     const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user", width:{ideal:640}, height:{ideal:480} }, audio:false });
     video.srcObject = stream; await video.play();
-    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    canvas.width = glCanvas.width = video.videoWidth;
+    canvas.height = glCanvas.height = video.videoHeight;
     drawer = new DrawingUtils(ctx);
     $("overlay").hidden = true;
     $("calibBtn").disabled=false; $("meshBtn").disabled=false;
     chBtns.querySelectorAll("button").forEach(b=>b.disabled=false);
     $("chState").textContent="計測したい感情を選んでください";
     setStatus("計測中","on");
+    running = true;
     requestAnimationFrame(loop);
   }catch(err){
     console.error(err);
@@ -306,8 +345,7 @@ $("startBtn").addEventListener("click", async ()=>{
 
 $("sens").addEventListener("input",e=>{ $("sensOut").textContent=e.target.value; for(const k in peak) peak[k]=0; });
 $("meshBtn").addEventListener("click",()=>{
-  showMesh=!showMesh; $("meshBtn").textContent=`ランドマーク表示：${showMesh?"オン":"オフ"}`;
-  if(!showMesh) ctx.clearRect(0,0,canvas.width,canvas.height);
+  showMesh=!showMesh; $("meshBtn").textContent=`ランドマーク：${showMesh?"オン":"オフ"}`;
 });
 
 function loop(){
@@ -318,19 +356,22 @@ function loop(){
     const face = res.faceLandmarks?.[0];
     const cats = res.faceBlendshapes?.[0]?.categories;
     if (face && cats){
-      if (showMesh){
-        const css = getComputedStyle(document.documentElement);
-        const col = css.getPropertyValue("--fun").trim()||"#3fbfb0";
-        for (const c of [FaceLandmarker.FACE_LANDMARKS_LIPS, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
-                         FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL]){
-          drawer.drawConnectors(face, c, { color:col, lineWidth:1.5 });
-        }
-      }
       latestBS = Object.fromEntries(cats.map(c=>[c.categoryName,c.score]));
       update(latestBS);
+      if (mode === "mask") drawMask(face, latestBS);
+      else {
+        clearGL();
+        if (showMesh){
+          const col = getComputedStyle(document.documentElement).getPropertyValue("--fun").trim()||"#3fbfb0";
+          for (const c of [FaceLandmarker.FACE_LANDMARKS_LIPS, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
+                           FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL]){
+            drawer.drawConnectors(face, c, { color:col, lineWidth:1.5 });
+          }
+        }
+      }
       setStatus("計測中","on");
     } else {
-      latestBS = null; setStatus("顔が見つかりません");
+      latestBS = null; clearGL(); setStatus("顔が見つかりません");
     }
   }
   requestAnimationFrame(loop);
@@ -339,7 +380,7 @@ function loop(){
 const ALPHA = 0.35; // 指数移動平均（ジッター抑制）
 function update(bs){
   const a = toAUs(bs);
-  calibCollect(bs);
+  if (calibBuf) calibBuf.push(bs);
   for (const e of EMOTIONS){
     const s = clamp01(e.f(a))*100;
     smooth[e.key] = smooth[e.key] + ALPHA*(s - smooth[e.key]);
@@ -361,8 +402,14 @@ function update(bs){
 
 // ---- 実況コメント（最も高い感情と点数帯で選ぶ。ちらつかないよう間隔を置く） ----
 let cap = { id:null, at:0 };
+function showCaption(tag, text, color, holdMs){
+  const el = $("caption"); el.hidden = false;
+  el.style.setProperty("--c", color);
+  $("captionTag").textContent = tag; $("captionText").textContent = text;
+  cap = { id:"manual", at: performance.now() + Math.max(0, holdMs - 1200) };
+}
 function updateCaption(){
-  if (ch) return; // チャレンジ中は別表示
+  if (ch || calibBuf) return; // チャレンジ中・真顔計測中は別表示
   const now = performance.now();
   let top = EMOTIONS[0];
   for (const e of EMOTIONS) if (smooth[e.key] > smooth[top.key]) top = e;
@@ -384,36 +431,45 @@ function updateCaption(){
   }
 }
 
-// ---- 真顔キャリブレーション ----
-let calibBuf = null, calibEnd = 0;
+// ---- 真顔キャリブレーション（3秒カウントダウン中に計測） ----
+let calibBuf = null;
 $("calibBtn").addEventListener("click",()=>{
-  calibBuf = []; calibEnd = performance.now()+3000;
+  if (calibBuf || ch) return;
+  calibBuf = [];
   $("calibBtn").disabled = true;
-  $("calibText").className="calib"; $("calibText").textContent="真顔のまま正面を見てください…";
+  $("caption").hidden = true;
+  $("countdown").hidden = false;
+  $("calibText").className="calib"; $("calibText").textContent="真顔を計測中…";
+  const t0 = performance.now();
+  const tick = () => {
+    const left = 3 - (performance.now()-t0)/1000;
+    if (left > 0){ $("cdNum").textContent = Math.ceil(left); requestAnimationFrame(tick); }
+    else finishCalib();
+  };
+  tick();
 });
-function calibCollect(bs){
-  if (!calibBuf) return;
-  calibBuf.push(bs);
-  const left = Math.max(0,(calibEnd-performance.now())/1000);
-  if (left>0){ $("calibText").textContent=`真顔のまま正面を見てください… ${left.toFixed(1)}秒`; return; }
-  if (calibBuf.length < 20){
-    $("calibText").className="calib warn"; $("calibText").textContent="顔の検出が不安定でした。明るい場所でもう一度お試しください。";
-  } else {
-    const names = Object.keys(calibBuf[0]); baseline = {};
-    for (const n of names){
-      const vals = calibBuf.map(b=>b[n]).sort((x,y)=>x-y);
-      baseline[n] = vals[Math.floor(vals.length/2)];
-    }
-    for (const e of EMOTIONS){ peak[e.key]=0; }
-    $("calibText").className="calib"; $("calibText").textContent=`キャリブレーション済み（${calibBuf.length}フレームの中央値）`;
+function finishCalib(){
+  $("countdown").hidden = true;
+  const buf = calibBuf; calibBuf = null; $("calibBtn").disabled = false;
+  if (buf.length < 20){
+    $("calibText").className="calib warn"; $("calibText").textContent="顔の検出が不安定でした（明るい場所で再計測してください）";
+    showCaption("真顔の計測", "顔がよく見えなかったわ。明るいところで、もう一度やりましょう。", "#e3a04a", 4000);
+    return;
   }
-  calibBuf = null; $("calibBtn").disabled=false;
+  const names = Object.keys(buf[0]); baseline = {};
+  for (const n of names){
+    const vals = buf.map(b=>b[n]).sort((x,y)=>x-y);
+    baseline[n] = vals[Math.floor(vals.length/2)];
+  }
+  for (const e of EMOTIONS){ peak[e.key]=0; }
+  $("calibText").className="calib"; $("calibText").textContent=`キャリブレーション済み（${buf.length}フレームの中央値）`;
+  showCaption("真顔の計測 完了", "あなたの真顔はわかったわ。さあ、表情を見せて。", "#cfd8de", 4000);
 }
 
 // ---- チャレンジ ----
 let ch = null;
 function startChallenge(e){
-  if (ch) return;
+  if (ch || calibBuf) return;
   ch = { e, phase:"count", t0:performance.now(), samples:[] };
   $("chComment").textContent = "";
   $("caption").hidden = true;
@@ -449,6 +505,343 @@ function bestWindowMean(samples, ms){
     bestV = Math.max(bestV, sum/(i-j+1));
   }
   return bestV;
+}
+
+// =====================================================================
+// なりきりモード
+// =====================================================================
+let mode = "meter", maskKind = "neko", hideVideo = false;
+
+function setMode(m){
+  mode = m;
+  $("modeMeter").setAttribute("aria-pressed", m==="meter");
+  $("modeMask").setAttribute("aria-pressed", m==="mask");
+  $("maskPanel").hidden = m !== "mask";
+  $("meshBtn").hidden = m === "mask";
+  if (m === "meter"){ clearGL(); video.style.opacity = 1; }
+  else video.style.opacity = hideVideo ? 0 : 1;
+}
+$("modeMeter").addEventListener("click",()=>setMode("meter"));
+$("modeMask").addEventListener("click",()=>setMode("mask"));
+$("hideVideoBtn").addEventListener("click",()=>{
+  hideVideo = !hideVideo;
+  $("hideVideoBtn").textContent = `カメラ映像：${hideVideo?"非表示":"表示"}`;
+  video.style.opacity = hideVideo ? 0 : 1;
+});
+
+// ---- 描画ヘルパー（マスコットは顔幅=200単位の座標系で描く） ----
+const TAU = Math.PI*2;
+function fs(c, fill, stroke, lw){
+  if (fill){ c.fillStyle=fill; c.fill(); }
+  if (stroke){ c.strokeStyle=stroke; c.lineWidth=lw||4; c.lineJoin="round"; c.lineCap="round"; c.stroke(); }
+}
+function ell(c,x,y,rx,ry,fill,stroke,lw){ c.beginPath(); c.ellipse(x,y,Math.max(rx,.1),Math.max(ry,.1),0,0,TAU); fs(c,fill,stroke,lw); }
+function rrect(c,x,y,w,h,r){
+  r = Math.min(r, w/2, h/2);
+  c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath();
+}
+function line(c,pts,stroke,lw){ c.beginPath(); c.moveTo(pts[0],pts[1]); for(let i=2;i<pts.length;i+=2) c.lineTo(pts[i],pts[i+1]); fs(c,null,stroke,lw); }
+function eye(c,x,y,rx,ry,closed,ink,hl){
+  const k = 1 - clamp01(closed);
+  if (k < 0.2){ c.beginPath(); c.moveTo(x-rx*1.2,y); c.quadraticCurveTo(x,y+ry*0.55,x+rx*1.2,y); fs(c,null,ink,5); return; }
+  ell(c,x,y,rx,ry*k,ink);
+  if (hl && k > 0.5) ell(c,x+rx*0.32,y-ry*k*0.38,rx*0.34,rx*0.34,hl);
+}
+function brows(c,p,ex,ey,len,ink,lw){
+  for (const sx of [-1,1]){
+    const x = sx*ex + p.yaw*16;
+    const inY = ey - p.browUp*14 + p.browDown*12, outY = ey + p.browUp*5 - p.browDown*6;
+    line(c,[x - sx*len, inY, x + sx*len, outY], ink, lw);
+  }
+}
+function effects(c,p,e,ex,ey){
+  const t = performance.now();
+  const blush = Math.max(e.joy, e.fun)/100;
+  if (blush > 0.12) for (const sx of [-1,1]) ell(c, sx*86 + p.yaw*10, 34, 24, 12, `rgba(255,110,130,${(blush*0.75).toFixed(3)})`);
+  if (e.anger > 30){
+    const a = Math.min(1,(e.anger-30)/50);
+    c.save(); c.translate(100,-96); c.scale(0.6+0.5*a, 0.6+0.5*a);
+    for (const [dx,dy] of [[-1,-1],[1,-1],[1,1],[-1,1]]){
+      const ang = Math.atan2(-dy,-dx);
+      c.beginPath(); c.arc(dx*20, dy*20, 14, ang-0.95, ang+0.95); fs(c,null,"#e0362c",7);
+    }
+    c.restore();
+  }
+  if (e.sad > 30){
+    const a = Math.min(1,(e.sad-30)/50);
+    const x = ex, y = ey + 24 + ((t/900)%1)*56;
+    c.beginPath(); c.moveTo(x,y-13);
+    c.bezierCurveTo(x+11,y-2,x+9,y+10,x,y+10); c.bezierCurveTo(x-9,y+10,x-11,y-2,x,y-13);
+    fs(c, `rgba(108,192,255,${(0.5+0.5*a).toFixed(3)})`, "rgba(40,90,150,.6)", 2);
+  }
+}
+
+// ---- マスコット3種（オリジナル） ----
+const MASCOTS = {
+  neko: { name:"もちねこ", draw(c,p,e){
+    const ink="#3a2f2a", fur="#fbf6ee", pink="#f2a3a3", yx=p.yaw*18;
+    for (const sx of [-1,1]){
+      c.beginPath(); c.moveTo(sx*38,-104); c.lineTo(sx*112,-158); c.lineTo(sx*126,-52); c.closePath(); fs(c,fur,ink,6);
+      c.beginPath(); c.moveTo(sx*58,-100); c.lineTo(sx*104,-134); c.lineTo(sx*112,-74); c.closePath(); fs(c,pink);
+    }
+    ell(c,0,0,142,124,fur,ink,6);
+    if (e.anger > 20) ell(c,0,0,139,121,`rgba(225,60,40,${(Math.min(e.anger,100)/400).toFixed(3)})`);
+    for (const sx of [-1,1]) for (const k of [-1,0,1]) line(c,[sx*94+yx*0.6, 28+k*12, sx*152, 20+k*20], ink, 3);
+    eye(c,-48+yx,-14,12,17,Math.max(p.blinkR, p.smile*0.45),ink,"#fff");
+    eye(c, 48+yx,-14,12,17,Math.max(p.blinkL, p.smile*0.45),ink,"#fff");
+    brows(c,p,48,-46,13,ink,5);
+    c.beginPath(); c.moveTo(yx-8,14); c.lineTo(yx+8,14); c.lineTo(yx,23); c.closePath(); fs(c,pink,ink,2);
+    if (p.open < 0.12){
+      const lift = p.smile*8 - p.frown*8;
+      c.beginPath(); c.moveTo(yx-24,34-lift); c.quadraticCurveTo(yx-12,46,yx,33); c.quadraticCurveTo(yx+12,46,yx+24,34-lift); fs(c,null,ink,4);
+    } else {
+      const rx=16+p.smile*10, ry=6+p.open*30, my=36+ry*0.6;
+      ell(c,yx,my,rx,ry,"#5b2630",ink,4);
+      c.save(); c.beginPath(); c.ellipse(yx,my,rx,ry,0,0,TAU); c.clip(); ell(c,yx,my+ry*0.7,rx*0.8,ry*0.55,pink); c.restore();
+    }
+    effects(c,p,e,48+yx,-14);
+  }},
+  fuwa: { name:"おばけのフワ", draw(c,p,e){
+    const ink="#2c3350", body="#f4f6ff", yx=p.yaw*20;
+    c.translate(0, Math.sin(performance.now()/450)*5);
+    const path = new Path2D();
+    path.moveTo(-132,30); path.bezierCurveTo(-138,-190,138,-190,132,30); path.lineTo(132,170);
+    const n=5, w=264/n;
+    for (let i=0;i<n;i++){ const x0=132-i*w; path.quadraticCurveTo(x0-w/2, 170+(i%2?-24:24), x0-w, 170); }
+    path.closePath();
+    c.fillStyle=body; c.fill(path); c.strokeStyle=ink; c.lineWidth=6; c.lineJoin="round"; c.stroke(path);
+    if (e.anger > 20){ c.fillStyle=`rgba(225,60,40,${(Math.min(e.anger,100)/400).toFixed(3)})`; c.fill(path); }
+    eye(c,-46+yx,-26,16,24,p.blinkR,ink,"#fff");
+    eye(c, 46+yx,-26,16,24,p.blinkL,ink,"#fff");
+    brows(c,p,46,-66,14,ink,5);
+    if (p.open < 0.12){
+      const end = 28 - p.smile*6 + p.frown*6, ctrl = 28 + p.smile*12 - p.frown*10 + 2;
+      c.beginPath(); c.moveTo(yx-18,end); c.quadraticCurveTo(yx,ctrl,yx+18,end); fs(c,null,ink,4);
+    } else {
+      ell(c,yx,32+p.open*10,10+p.smile*10,5+p.open*28,"#3a2440",ink,4);
+    }
+    effects(c,p,e,46+yx,-26);
+  }},
+  robo: { name:"ロボ太", draw(c,p,e){
+    const ink="#1f2b36", shell="#a9bccc", scr="#14202a", led="#5ff2e6", yx=p.yaw*16;
+    line(c,[0,-110,0,-150],ink,6);
+    ell(c,0,-160,13,13,p.antenna||"#cfd8de",ink,5);
+    for (const sx of [-1,1]){ rrect(c, sx>0?120:-138, -28, 18, 56, 6); fs(c,"#7f93a6",ink,5); }
+    rrect(c,-126,-112,252,214,40); fs(c,shell,ink,6);
+    if (e.anger > 20){ rrect(c,-123,-109,246,208,38); fs(c,`rgba(225,60,40,${(Math.min(e.anger,100)/400).toFixed(3)})`); }
+    for (const [sx,bl] of [[-1,p.blinkR],[1,p.blinkL]]){
+      const ex = sx*52 + yx;
+      rrect(c,ex-32,-62,64,46,12); fs(c,scr,ink,4);
+      const h = Math.max(4, 30*(1-Math.max(bl, p.smile*0.5)));
+      rrect(c,ex-20,-39-h/2,40,h,h/2); fs(c,led);
+    }
+    brows(c,p,52,-78,20,ink,7);
+    const mh = 16 + p.open*46;
+    rrect(c,yx-50,30,100,mh,8); fs(c,scr,ink,4);
+    c.save(); rrect(c,yx-50,30,100,mh,8); c.clip();
+    const lift = p.smile*12 - p.frown*10, my = 30 + mh/2;
+    c.beginPath(); c.moveTo(yx-40,my-lift); c.quadraticCurveTo(yx,my+lift,yx+40,my-lift); fs(c,null,led,4);
+    c.restore();
+    effects(c,p,e,52+yx,-40);
+  }},
+};
+
+function drawMascot(c, kind, p, e){
+  c.save(); c.translate(p.cx, p.cy); c.rotate(p.roll);
+  const s = p.size/200; c.scale(s, s); c.translate(0,-10);
+  MASCOTS[kind].draw(c, p, e);
+  c.restore();
+}
+
+// ---- ランドマーク → マスコットの動かし方 ----
+function faceParams(face, bs, W, H){
+  const P = i => ({ x:face[i].x*W, y:face[i].y*H });
+  const L=P(234), R=P(454), top=P(10), chin=P(152), nose=P(1), eR=P(33), eL=P(263);
+  const size = Math.hypot(R.x-L.x, R.y-L.y);
+  const roll = Math.atan2(eL.y-eR.y, eL.x-eR.x);
+  const mx=(L.x+R.x)/2, my=(L.y+R.y)/2;
+  const yaw = clamp(((nose.x-mx)*Math.cos(roll) + (nose.y-my)*Math.sin(roll)) / (size*0.35), -1, 1);
+  const b = n => bs[n] ?? 0, base = n => baseline?.[n] ?? 0;
+  const avg = (x,y) => (b(x)+b(y))/2, bavg = (x,y) => (base(x)+base(y))/2;
+  const blinkOf = n => clamp01((b(n) - Math.max(base(n), 0.05)) / 0.45);
+  return {
+    cx:(top.x+chin.x)/2, cy:(top.y+chin.y)/2, size, roll, yaw,
+    blinkL: blinkOf("eyeBlinkLeft"), blinkR: blinkOf("eyeBlinkRight"),
+    open: clamp01((b("jawOpen") - base("jawOpen") - 0.02) / 0.4),
+    smile: clamp01((avg("mouthSmileLeft","mouthSmileRight") - bavg("mouthSmileLeft","mouthSmileRight")) / 0.5),
+    frown: clamp01((avg("mouthFrownLeft","mouthFrownRight") - bavg("mouthFrownLeft","mouthFrownRight")) / 0.25),
+    browUp: clamp01((b("browInnerUp") - base("browInnerUp")) / 0.35),
+    browDown: clamp01((avg("browDownLeft","browDownRight") - bavg("browDownLeft","browDownRight")) / 0.35),
+  };
+}
+let mp = null;
+function smoothParams(n){
+  if (!mp){ mp = n; return n; }
+  const out = {};
+  for (const k in n){
+    const a = (k==="blinkL"||k==="blinkR") ? 0.75 : (k==="cx"||k==="cy"||k==="size"||k==="roll") ? 0.6 : 0.5;
+    out[k] = mp[k] + a*(n[k]-mp[k]);
+  }
+  return (mp = out);
+}
+function emoNow(){ return { joy:smooth.joy, anger:smooth.anger, sad:smooth.sad, fun:smooth.fun }; }
+function topColor(){
+  let top = null;
+  for (const e of EMOTIONS) if (smooth[e.key] > 20 && (!top || smooth[e.key] > smooth[top.key])) top = e;
+  return top ? top.hex : "#cfd8de";
+}
+
+function drawMask(face, bs){
+  const W = canvas.width, H = canvas.height;
+  const p = smoothParams(faceParams(face, bs, W, H));
+  if (maskKind === "photo" && photo){
+    if (photo.mode === "mesh" && gl){ renderPhoto(face); return; }
+    clearGL();
+    // 貼り付け表示（顔を検出できなかった画像）：鏡映しで文字が反転しないよう左右を戻す
+    ctx.save(); ctx.translate(p.cx, p.cy); ctx.rotate(p.roll); ctx.scale(-1,1);
+    const w = p.size*1.7, h = w * photo.img.height / photo.img.width;
+    ctx.drawImage(photo.img, -w/2, -h/2 - p.size*0.08, w, h);
+    ctx.restore();
+    return;
+  }
+  clearGL();
+  drawMascot(ctx, maskKind, { ...p, antenna: topColor() }, emoNow());
+}
+
+// ---- プリセット選択 ----
+const presetsEl = $("presets");
+function presetButton(kind, label, thumb){
+  const b = document.createElement("button");
+  b.className = "preset"; b.dataset.kind = kind; b.setAttribute("aria-pressed", kind===maskKind);
+  b.appendChild(thumb);
+  const s = document.createElement("span"); s.textContent = label; b.appendChild(s);
+  b.addEventListener("click", ()=>selectKind(kind));
+  return b;
+}
+function selectKind(kind){
+  maskKind = kind; mp = null;
+  presetsEl.querySelectorAll(".preset").forEach(b=>b.setAttribute("aria-pressed", b.dataset.kind===kind));
+}
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+for (const kind of Object.keys(MASCOTS)){
+  const cv = document.createElement("canvas"); cv.width = cv.height = 72*DPR;
+  const c = cv.getContext("2d"); c.scale(DPR, DPR);
+  drawMascot(c, kind, { cx:36, cy:42, size:40, roll:0, yaw:0, blinkL:0, blinkR:0, open:0, smile:0.4, frown:0, browUp:0, browDown:0 },
+             { joy:0, anger:0, sad:0, fun:0 });
+  presetsEl.appendChild(presetButton(kind, MASCOTS[kind].name, cv));
+}
+
+// ---- 写真アップロード → WebGLメッシュ変形 ----
+let photo = null; // { mode:"mesh"|"sticker", img, ... }
+const N = 468;
+const INNER_LIP = [78,191,80,81,82,13,312,311,310,415,308,324,318,402,317,14,87,178,88,95];
+const INNER_SET = new Set(INNER_LIP);
+
+$("upload").addEventListener("change", async ev=>{
+  const f = ev.target.files?.[0]; ev.target.value = "";
+  if (!f) return;
+  const msg = $("maskMsg");
+  if (!fileset){ msg.className="maskmsg warn"; msg.textContent="先に「カメラを起動」を押してください。"; return; }
+  msg.className="maskmsg"; msg.textContent="写真の顔を解析中…";
+  try{
+    const url = URL.createObjectURL(f);
+    const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error("画像を読み込めませんでした")); i.src=url; });
+    URL.revokeObjectURL(url);
+    const k = Math.min(1, 1024/Math.max(img.width, img.height));
+    const cv = document.createElement("canvas"); cv.width = Math.round(img.width*k); cv.height = Math.round(img.height*k);
+    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    imgLandmarker ??= await FaceLandmarker.createFromOptions(fileset, { baseOptions:{ modelAssetPath:MODEL }, runningMode:"IMAGE", numFaces:1 });
+    const lm = imgLandmarker.detect(cv).faceLandmarks?.[0];
+    if (lm && initGL()){
+      const { default: Delaunator } = await import(DELAUNATOR);
+      const pts = []; for (let i=0;i<N;i++) pts.push([lm[i].x*cv.width, lm[i].y*cv.height]);
+      const t = Delaunator.from(pts).triangles, idx = [];
+      for (let i=0;i<t.length;i+=3){
+        if (INNER_SET.has(t[i]) && INNER_SET.has(t[i+1]) && INNER_SET.has(t[i+2])) continue; // 口の中は穴にする
+        idx.push(t[i],t[i+1],t[i+2]);
+      }
+      setupPhotoMesh(cv, lm, idx);
+      photo = { mode:"mesh", img:cv };
+      msg.className="maskmsg"; msg.textContent="顔を検出しました。口パク・まばたき・眉の動きに連動します。";
+    } else {
+      photo = { mode:"sticker", img:cv };
+      msg.className="maskmsg warn";
+      msg.textContent="この画像からは顔を検出できなかったため、顔の位置に追従する貼り付け表示にしています（口パク・まばたきは連動しません）。";
+    }
+    presetsEl.querySelector('[data-kind="photo"]')?.remove();
+    const th = document.createElement("img"); th.src = cv.toDataURL("image/jpeg", 0.7); th.alt = "";
+    presetsEl.appendChild(presetButton("photo", "写真", th));
+    selectKind("photo");
+  }catch(err){
+    console.error(err);
+    msg.className="maskmsg warn"; msg.textContent="写真を読み込めませんでした：" + (err?.message||err);
+  }
+});
+
+let gl = null, prog, loc = {}, buf = {}, tex = null, triCount = 0, glDirty = false;
+const VS = `attribute vec2 aPos;attribute vec2 aUV;attribute float aA;varying vec2 vUV;varying float vA;
+void main(){vUV=aUV;vA=aA;gl_Position=vec4(aPos,0.0,1.0);}`;
+const FS = `precision mediump float;varying vec2 vUV;varying float vA;uniform sampler2D uTex;uniform vec4 uColor;uniform float uSolid;
+void main(){vec4 c=uSolid>0.5?uColor:texture2D(uTex,vUV);gl_FragColor=vec4(c.rgb,c.a*vA);}`;
+function initGL(){
+  if (gl) return true;
+  const g = glCanvas.getContext("webgl", { premultipliedAlpha:false, alpha:true, antialias:true });
+  if (!g) return false;
+  const sh = (type, src) => { const s=g.createShader(type); g.shaderSource(s,src); g.compileShader(s);
+    if (!g.getShaderParameter(s,g.COMPILE_STATUS)) throw new Error(g.getShaderInfoLog(s)); return s; };
+  prog = g.createProgram();
+  g.attachShader(prog, sh(g.VERTEX_SHADER, VS)); g.attachShader(prog, sh(g.FRAGMENT_SHADER, FS)); g.linkProgram(prog);
+  for (const n of ["aPos","aUV","aA"]) loc[n] = g.getAttribLocation(prog, n);
+  for (const n of ["uTex","uColor","uSolid"]) loc[n] = g.getUniformLocation(prog, n);
+  for (const n of ["pos","uv","a","idx","mouth"]) buf[n] = g.createBuffer();
+  gl = g; return true;
+}
+function setupPhotoMesh(img, lm, idx){
+  const uv = new Float32Array(N*2), al = new Float32Array(N).fill(1);
+  for (let i=0;i<N;i++){ uv[2*i]=lm[i].x; uv[2*i+1]=lm[i].y; }
+  for (const c of FaceLandmarker.FACE_LANDMARKS_FACE_OVAL) al[c.start] = 0.35; // 輪郭をぼかす
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf.uv); gl.bufferData(gl.ARRAY_BUFFER, uv, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf.a);  gl.bufferData(gl.ARRAY_BUFFER, al, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf.idx); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+  triCount = idx.length;
+  if (tex) gl.deleteTexture(tex);
+  tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+  for (const [p,v] of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])
+    gl.texParameteri(gl.TEXTURE_2D, p, v);
+}
+function clearGL(){
+  if (!gl || !glDirty) return;
+  gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT); glDirty = false;
+}
+function renderPhoto(face){
+  gl.viewport(0,0,glCanvas.width,glCanvas.height);
+  gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.useProgram(prog); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  // 口の中（暗い色）を先に描く
+  let mx=0, my=0;
+  for (const i of INNER_LIP){ mx += face[i].x; my += face[i].y; }
+  mx/=INNER_LIP.length; my/=INNER_LIP.length;
+  const m = [mx*2-1, 1-my*2];
+  for (const i of [...INNER_LIP, INNER_LIP[0]]) m.push(face[i].x*2-1, 1-face[i].y*2);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf.mouth); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(m), gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(loc.aPos); gl.vertexAttribPointer(loc.aPos,2,gl.FLOAT,false,0,0);
+  gl.disableVertexAttribArray(loc.aUV); gl.vertexAttrib2f(loc.aUV,0,0);
+  gl.disableVertexAttribArray(loc.aA); gl.vertexAttrib1f(loc.aA,1);
+  gl.uniform1f(loc.uSolid,1); gl.uniform4f(loc.uColor,0.17,0.05,0.06,1);
+  gl.drawArrays(gl.TRIANGLE_FAN, 0, m.length/2);
+  // 写真のメッシュを現在の顔の形に合わせて描く
+  const pos = new Float32Array(N*2);
+  for (let i=0;i<N;i++){ pos[2*i]=face[i].x*2-1; pos[2*i+1]=1-face[i].y*2; }
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf.pos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
+  gl.vertexAttribPointer(loc.aPos,2,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf.uv); gl.enableVertexAttribArray(loc.aUV); gl.vertexAttribPointer(loc.aUV,2,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf.a);  gl.enableVertexAttribArray(loc.aA);  gl.vertexAttribPointer(loc.aA,1,gl.FLOAT,false,0,0);
+  gl.uniform1f(loc.uSolid,0);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(loc.uTex,0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf.idx);
+  gl.drawElements(gl.TRIANGLES, triCount, gl.UNSIGNED_SHORT, 0);
+  glDirty = true;
 }
 </script>
 </body>
