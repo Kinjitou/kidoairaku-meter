@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>喜怒哀楽メーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: 計測器の操作パネル。左に映像、右に4チャンネルのメーター、下に採点式の根拠 */
+:root{
+  --bg:#eef1f3; --panel:#ffffff; --ink:#1b2328; --muted:#5d6a72; --line:#d3dade;
+  --joy:#c98a00; --anger:#c8402c; --sad:#3b55a8; --fun:#14857a;
+  --track:#e3e8eb; --warn:#a85d00;
+  --f-display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171a; --panel:#1a2125; --ink:#e6ecef; --muted:#93a2aa; --line:#2c363c;
+  --joy:#e9ad2c; --anger:#ef6a52; --sad:#8199e6; --fun:#3fbfb0; --track:#252e33; --warn:#e3a04a;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12171a; --panel:#1a2125; --ink:#e6ecef; --muted:#93a2aa; --line:#2c363c;
+  --joy:#e9ad2c; --anger:#ef6a52; --sad:#8199e6; --fun:#3fbfb0; --track:#252e33; --warn:#e3a04a;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:20px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 20px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(28px,4vw,40px);letter-spacing:.04em;margin:0;line-height:1.2}
+h1 small{font-family:var(--f-mono);font-weight:400;font-size:12px;letter-spacing:.08em;color:var(--muted);margin-left:10px}
+.status{font-family:var(--f-mono);font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.on{background:var(--fun)} .dot.err{background:var(--anger)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px}
+.stage{position:relative;aspect-ratio:4/3;max-width:100%;background:#0c1013;border-radius:4px;overflow:hidden}
+.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.overlay-msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#e6ecef;text-align:center;padding:20px;background:rgba(12,16,19,.72)}
+.overlay-msg p{margin:0;max-width:34ch;font-size:14px}
+.ctrls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+button{font:500 14px var(--f-body);border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 14px;border-radius:4px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--ink)}
+button:focus-visible{outline:2px solid var(--sad);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.calib{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:10px}
+.calib.warn{color:var(--warn)}
+.meters{display:flex;flex-direction:column;gap:14px}
+.meter{display:grid;grid-template-columns:56px minmax(0,1fr) 64px;gap:4px 12px;align-items:center}
+.kanji{font-family:var(--f-display);font-weight:800;font-size:40px;line-height:1;color:var(--c);grid-row:span 2;text-align:center}
+.mhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px;color:var(--muted);min-width:0}
+.mhead b{color:var(--ink);font-weight:700}
+.bar{height:12px;background:var(--track);border-radius:2px;position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--c);transition:width .08s linear}
+.bar u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.55;left:0}
+.score{font-family:var(--f-mono);font-size:28px;font-weight:500;text-align:right;font-variant-numeric:tabular-nums;grid-row:span 2;line-height:1}
+.score small{display:block;font-size:10px;color:var(--muted);letter-spacing:.06em;margin-top:4px}
+.aus{grid-column:2/3;display:flex;flex-wrap:wrap;gap:4px 10px;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.aus span{font-variant-numeric:tabular-nums}
+.note{font-size:12px;color:var(--warn);min-height:1.2em;margin-top:6px}
+.challenge{display:flex;flex-direction:column;gap:10px}
+.challenge h2,.method h2{font-family:var(--f-display);font-size:20px;margin:0;letter-spacing:.04em}
+.ch-btns{display:flex;flex-wrap:wrap;gap:8px}
+.ch-btns button{min-width:64px;font-family:var(--f-display);font-weight:800;font-size:18px;color:var(--c)}
+.ch-state{font-family:var(--f-mono);font-size:13px;min-height:1.6em}
+.ch-big{font-family:var(--f-mono);font-size:44px;font-variant-numeric:tabular-nums;line-height:1}
+.results{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.results div{border-top:3px solid var(--c);padding-top:6px;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.results b{display:block;font-size:22px;color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+.method{display:flex;flex-direction:column;gap:12px}
+.method p{margin:0;max-width:72ch}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:500}
+td code{font-family:var(--f-mono);font-size:12px}
+.k{font-family:var(--f-display);font-weight:800;font-size:20px;color:var(--c)}
+.fine{font-size:12px;color:var(--muted)}
+.fine a{color:inherit}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>喜怒哀楽メーター<small>FACS × MediaPipe Face Landmarker</small></h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">待機中</span></div>
+  </header>
+
+  <div class="grid">
+    <section class="panel">
+      <div class="stage">
+        <video id="video" playsinline muted></video>
+        <canvas id="canvas"></canvas>
+        <div class="overlay-msg" id="overlay">
+          <p>映像は端末内だけで処理します。サーバーへの送信はありません。</p>
+          <button class="primary" id="startBtn">カメラを起動</button>
+        </div>
+      </div>
+      <div class="ctrls">
+        <button id="calibBtn" disabled>真顔で基準を測る（3秒）</button>
+        <button id="meshBtn" disabled>ランドマーク表示：オン</button>
+      </div>
+      <div class="calib warn" id="calibText">未キャリブレーション：個人差を補正できていないため精度が下がります</div>
+    </section>
+
+    <section class="panel">
+      <div class="meters" id="meters"></div>
+      <div class="note" id="duchenne"></div>
+    </section>
+  </div>
+
+  <section class="panel challenge">
+    <h2>チャレンジ</h2>
+    <p class="fine" style="margin:0">感情を選ぶと3秒のカウントダウン後、3秒間計測します。0.5秒移動平均の最大値が得点です（一瞬のノイズで満点にならないようにするため）。</p>
+    <div class="ch-btns" id="chBtns"></div>
+    <div class="ch-state" id="chState">カメラ起動後に選べます</div>
+    <div class="results" id="results"></div>
+  </section>
+
+  <section class="panel method">
+    <h2>採点のしくみ</h2>
+    <p>顔の52種類の動き（ブレンドシェイプ）を、表情研究の標準体系FACS（Facial Action Coding System）の「アクションユニット（AU）」に対応づけ、各感情に典型的なAUの組み合わせがどれだけ同時に出ているかで採点します。必須AUは幾何平均で合成するため、どれか一つでも欠けると点数は大きく下がります。</p>
+    <div class="tbl"><table>
+      <thead><tr><th></th><th>参照する感情</th><th>必須AU（幾何平均）</th><th>補正</th><th>根拠</th></tr></thead>
+      <tbody>
+        <tr style="--c:var(--joy)"><td class="k">喜</td><td>喜び（joy）</td><td><code>AU6 頬を上げる × AU12 口角を上げる</code></td><td><code>× (1 − 0.5·AU26)</code> 大口の笑いは「楽」側へ</td><td>FACS Investigator's Guideの幸福規則 6+12／Campos et al. 2013</td></tr>
+        <tr style="--c:var(--anger)"><td class="k">怒</td><td>怒り（anger）</td><td><code>AU4 眉を寄せ下げる × (AU5 または AU7)</code></td><td><code>× (0.7 + 0.3·AU23/24)</code>、<code>× (1 − AU12)</code></td><td>同ガイドの怒り規則 4+5/7、4+5+7+23</td></tr>
+        <tr style="--c:var(--sad)"><td class="k">哀</td><td>悲しみ（sadness）</td><td><code>AU1 眉の内側を上げる × AU4</code></td><td><code>× (0.6 + 0.4·AU15)</code>、<code>× (1 − AU12)</code></td><td>同ガイドの悲しみ規則 1+4、1+4+15</td></tr>
+        <tr style="--c:var(--fun)"><td class="k">楽</td><td>愉快・面白さ（amusement）</td><td><code>AU6 × AU12 × AU25/26 口を開く</code></td><td>なし</td><td>Campos et al. 2013（amusementは6+12に口の開きと顎の下降）</td></tr>
+      </tbody>
+    </table></div>
+    <p class="fine">各AUの強さ ＝ (現在値 − 真顔の基準値) ÷ (参照最大値 − 基準値) を0〜1に収めた値です。参照最大値はMediaPipeの出力が実際に届きやすい上限に合わせた経験的な設定で、論文由来の値ではありません。</p>
+    <p class="fine">注意：表情は内面の感情をそのまま表すとは限りません（Barrett et al. 2019）。この点数は「典型的な感情表出の形にどれだけ近いか」を測るもので、本人の感情を判定するものではありません。「口元だけの笑顔」の判定は、頬の動き（AU6）の有無で本物の笑顔を見分けるデュシェンヌ・スマイルの考え方によりますが、この区別が本心を示すかには反論もあります（Girard et al. 2021）。</p>
+    <p class="fine">参考：<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7264164/" target="_blank" rel="noopener">Clark et al. 2020, Front. Psychol.（FACS Investigator's GuideのAU→感情規則表）</a> ／ <a href="https://psu.pb.unizin.org/psych425/chapter/facial-expressions-and-bodily-changes/" target="_blank" rel="noopener">Campos et al. 2013 の要約（ポジティブ感情8種の表出）</a></p>
+  </section>
+</div>
+
+<script type="module">
+import { FaceLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.mjs";
+
+const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
+const MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+
+// ---- FACS アクションユニット定義（ブレンドシェイプ → AU） ----
+const AUS = {
+  AU1:  { label:"AU1",  bs:["browInnerUp"],                        ref:0.60 },
+  AU4:  { label:"AU4",  bs:["browDownLeft","browDownRight"],       ref:0.60 },
+  AU5:  { label:"AU5",  bs:["eyeWideLeft","eyeWideRight"],         ref:0.40 },
+  AU6:  { label:"AU6",  bs:["cheekSquintLeft","cheekSquintRight"], ref:0.50 },
+  AU7:  { label:"AU7",  bs:["eyeSquintLeft","eyeSquintRight"],     ref:0.60 },
+  AU12: { label:"AU12", bs:["mouthSmileLeft","mouthSmileRight"],   ref:0.80 },
+  AU15: { label:"AU15", bs:["mouthFrownLeft","mouthFrownRight"],   ref:0.40 },
+  AU23: { label:"AU23/24", bs:["mouthPressLeft","mouthPressRight"],ref:0.50 },
+  AU26: { label:"AU25/26", bs:["jawOpen"],                         ref:0.50 },
+};
+
+const gmean = arr => Math.pow(arr.reduce((p,v)=>p*Math.max(v,0),1), 1/arr.length);
+
+// 感情スコア（0〜1）。a は AU強度（0〜1）
+const EMOTIONS = [
+  { key:"joy",   kanji:"喜", name:"喜び",   color:"--joy",   uses:["AU6","AU12","AU26"],
+    f:a => gmean([a.AU6,a.AU12]) * (1 - 0.5*a.AU26) },
+  { key:"anger", kanji:"怒", name:"怒り",   color:"--anger", uses:["AU4","AU5","AU7","AU23","AU12"],
+    f:a => gmean([a.AU4, Math.max(a.AU5,a.AU7)]) * (0.7 + 0.3*a.AU23) * (1 - a.AU12) },
+  { key:"sad",   kanji:"哀", name:"悲しみ", color:"--sad",   uses:["AU1","AU4","AU15","AU12"],
+    f:a => gmean([a.AU1,a.AU4]) * (0.6 + 0.4*a.AU15) * (1 - a.AU12) },
+  { key:"fun",   kanji:"楽", name:"愉快",   color:"--fun",   uses:["AU6","AU12","AU26"],
+    f:a => gmean([a.AU6,a.AU12,a.AU26]) },
+];
+
+const clamp01 = v => Math.min(1, Math.max(0, v));
+let baseline = null; // 真顔の基準（ブレンドシェイプ名 → 値）
+
+function toAUs(bsMap){
+  const out = {};
+  for (const [k,d] of Object.entries(AUS)){
+    const raw = d.bs.reduce((s,n)=>s+(bsMap[n]??0),0)/d.bs.length;
+    const base = baseline ? d.bs.reduce((s,n)=>s+(baseline[n]??0),0)/d.bs.length : d.ref*0.1;
+    out[k] = clamp01((raw - base) / Math.max(d.ref - base, 0.05));
+  }
+  return out;
+}
+
+// ---- UI 構築 ----
+const $ = id => document.getElementById(id);
+const metersEl = $("meters"), resultsEl = $("results"), chBtns = $("chBtns");
+const ui = {}, smooth = {}, peak = {}, best = {};
+for (const e of EMOTIONS){
+  smooth[e.key]=0; peak[e.key]=0; best[e.key]=null;
+  const m = document.createElement("div");
+  m.className="meter"; m.style.setProperty("--c",`var(${e.color})`);
+  m.innerHTML = `<div class="kanji">${e.kanji}</div>
+    <div class="mhead"><b>${e.name}</b><span>最高 <span data-peak>0</span></span></div>
+    <div class="score"><span data-score>0</span><small>/ 100</small></div>
+    <div class="bar"><i></i><u></u></div>
+    <div class="aus" data-aus></div>`;
+  metersEl.appendChild(m);
+  ui[e.key] = { bar:m.querySelector(".bar i"), peakMark:m.querySelector(".bar u"),
+    score:m.querySelector("[data-score]"), peak:m.querySelector("[data-peak]"), aus:m.querySelector("[data-aus]") };
+  const b = document.createElement("button");
+  b.textContent=e.kanji; b.style.setProperty("--c",`var(${e.color})`); b.disabled=true; b.dataset.key=e.key;
+  b.setAttribute("aria-label", `${e.name}チャレンジ`);
+  b.addEventListener("click",()=>startChallenge(e)); chBtns.appendChild(b);
+  const r = document.createElement("div"); r.style.setProperty("--c",`var(${e.color})`);
+  r.innerHTML = `${e.kanji}・${e.name}<b data-res>—</b>`; resultsEl.appendChild(r);
+  ui[e.key].res = r.querySelector("[data-res]");
+}
+
+function setStatus(text, state){ $("statusText").textContent=text; $("dot").className="dot"+(state?" "+state:""); }
+
+// ---- MediaPipe ----
+let landmarker, drawer, showMesh=true, lastVideoTime=-1, latestBS=null;
+const video=$("video"), canvas=$("canvas"), ctx=canvas.getContext("2d");
+
+$("startBtn").addEventListener("click", async ()=>{
+  $("startBtn").disabled=true;
+  try{
+    setStatus("モデル読み込み中…");
+    const fileset = await FilesetResolver.forVisionTasks(WASM);
+    const opts = { runningMode:"VIDEO", numFaces:1, outputFaceBlendshapes:true };
+    try{
+      landmarker = await FaceLandmarker.createFromOptions(fileset,{ baseOptions:{ modelAssetPath:MODEL, delegate:"GPU" }, ...opts });
+    }catch{
+      landmarker = await FaceLandmarker.createFromOptions(fileset,{ baseOptions:{ modelAssetPath:MODEL, delegate:"CPU" }, ...opts });
+    }
+    setStatus("カメラ接続中…");
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user", width:{ideal:640}, height:{ideal:480} }, audio:false });
+    video.srcObject = stream; await video.play();
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    drawer = new DrawingUtils(ctx);
+    $("overlay").hidden = true;
+    $("calibBtn").disabled=false; $("meshBtn").disabled=false;
+    chBtns.querySelectorAll("button").forEach(b=>b.disabled=false);
+    $("chState").textContent="計測したい感情を選んでください";
+    setStatus("計測中","on");
+    requestAnimationFrame(loop);
+  }catch(err){
+    console.error(err);
+    const msg = err?.name==="NotAllowedError" ? "カメラの使用が許可されませんでした。ブラウザの設定で許可してから再読み込みしてください。"
+      : (err?.name==="NotFoundError" ? "カメラが見つかりませんでした。" : "起動に失敗しました：" + (err?.message||err));
+    $("overlay").querySelector("p").textContent = msg;
+    $("startBtn").disabled=false; setStatus("エラー","err");
+  }
+});
+
+$("meshBtn").addEventListener("click",()=>{
+  showMesh=!showMesh; $("meshBtn").textContent=`ランドマーク表示：${showMesh?"オン":"オフ"}`;
+  if(!showMesh) ctx.clearRect(0,0,canvas.width,canvas.height);
+});
+
+function loop(){
+  if (video.currentTime !== lastVideoTime){
+    lastVideoTime = video.currentTime;
+    const res = landmarker.detectForVideo(video, performance.now());
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const face = res.faceLandmarks?.[0];
+    const cats = res.faceBlendshapes?.[0]?.categories;
+    if (face && cats){
+      if (showMesh){
+        const css = getComputedStyle(document.documentElement);
+        const col = css.getPropertyValue("--fun").trim()||"#3fbfb0";
+        for (const c of [FaceLandmarker.FACE_LANDMARKS_LIPS, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
+                         FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL]){
+          drawer.drawConnectors(face, c, { color:col, lineWidth:1.5 });
+        }
+      }
+      latestBS = Object.fromEntries(cats.map(c=>[c.categoryName,c.score]));
+      update(latestBS);
+      setStatus("計測中","on");
+    } else {
+      latestBS = null; setStatus("顔が見つかりません");
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+const ALPHA = 0.35; // 指数移動平均（ジッター抑制）
+function update(bs){
+  const a = toAUs(bs);
+  calibCollect(bs);
+  for (const e of EMOTIONS){
+    const s = clamp01(e.f(a))*100;
+    smooth[e.key] = smooth[e.key] + ALPHA*(s - smooth[e.key]);
+    const v = smooth[e.key];
+    if (v > peak[e.key]) peak[e.key]=v;
+    const u = ui[e.key];
+    u.bar.style.width = v.toFixed(1)+"%";
+    u.peakMark.style.left = `calc(${peak[e.key].toFixed(1)}% - 1px)`;
+    u.score.textContent = Math.round(v);
+    u.peak.textContent = Math.round(peak[e.key]);
+    u.aus.innerHTML = e.uses.map(k=>`<span>${AUS[k].label} ${a[k].toFixed(2)}</span>`).join("");
+  }
+  // デュシェンヌ判定：口角は上がっているが頬が上がっていない
+  $("duchenne").textContent = (a.AU12 > 0.4 && a.AU6 < 0.15)
+    ? "口元だけの笑顔（AU12のみ・AU6なし）です。頬まで持ち上げると「喜」が上がります。" : "";
+  challengeTick();
+}
+
+// ---- 真顔キャリブレーション ----
+let calibBuf = null, calibEnd = 0;
+$("calibBtn").addEventListener("click",()=>{
+  calibBuf = []; calibEnd = performance.now()+3000;
+  $("calibBtn").disabled = true;
+  $("calibText").className="calib"; $("calibText").textContent="真顔のまま正面を見てください…";
+});
+function calibCollect(bs){
+  if (!calibBuf) return;
+  calibBuf.push(bs);
+  const left = Math.max(0,(calibEnd-performance.now())/1000);
+  if (left>0){ $("calibText").textContent=`真顔のまま正面を見てください… ${left.toFixed(1)}秒`; return; }
+  if (calibBuf.length < 20){
+    $("calibText").className="calib warn"; $("calibText").textContent="顔の検出が不安定でした。明るい場所でもう一度お試しください。";
+  } else {
+    const names = Object.keys(calibBuf[0]); baseline = {};
+    for (const n of names){
+      const vals = calibBuf.map(b=>b[n]).sort((x,y)=>x-y);
+      baseline[n] = vals[Math.floor(vals.length/2)];
+    }
+    for (const e of EMOTIONS){ peak[e.key]=0; }
+    $("calibText").className="calib"; $("calibText").textContent=`キャリブレーション済み（${calibBuf.length}フレームの中央値）`;
+  }
+  calibBuf = null; $("calibBtn").disabled=false;
+}
+
+// ---- チャレンジ ----
+let ch = null;
+function startChallenge(e){
+  if (ch) return;
+  ch = { e, phase:"count", t0:performance.now(), samples:[] };
+  chBtns.querySelectorAll("button").forEach(b=>b.disabled=true);
+}
+function challengeTick(){
+  if (!ch) return;
+  const now = performance.now(), el=$("chState");
+  if (ch.phase==="count"){
+    const left = 3 - (now-ch.t0)/1000;
+    if (left>0){ el.innerHTML = `<span class="ch-big">${Math.ceil(left)}</span> ${ch.e.kanji}の表情を準備`; return; }
+    ch.phase="measure"; ch.t0=now;
+  }
+  if (ch.phase==="measure"){
+    ch.samples.push({ t:now, v:smooth[ch.e.key] });
+    const left = 3 - (now-ch.t0)/1000;
+    if (left>0){ el.innerHTML = `<span class="ch-big">${Math.round(smooth[ch.e.key])}</span> 計測中 残り${left.toFixed(1)}秒`; return; }
+    const score = Math.round(bestWindowMean(ch.samples, 500));
+    best[ch.e.key] = Math.max(best[ch.e.key]??0, score);
+    ui[ch.e.key].res.textContent = `${score}（自己ベスト ${best[ch.e.key]}）`;
+    el.innerHTML = `<span class="ch-big">${score}</span> 点 ／ ${ch.e.kanji}・${ch.e.name}`;
+    ch = null; chBtns.querySelectorAll("button").forEach(b=>b.disabled=false);
+  }
+}
+function bestWindowMean(samples, ms){
+  let bestV = 0, j = 0, sum = 0;
+  for (let i=0;i<samples.length;i++){
+    sum += samples[i].v;
+    while (samples[i].t - samples[j].t > ms){ sum -= samples[j].v; j++; }
+    bestV = Math.max(bestV, sum/(i-j+1));
+  }
+  return bestV;
+}
+</script>
+</body>
+</html>
